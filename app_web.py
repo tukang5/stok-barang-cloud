@@ -8,7 +8,7 @@ st.set_page_config(
     page_title="Sistem Manajemen Stok & Log Cloud", page_icon="📦", layout="wide"
 )
 
-# === 1. KONEKSI SUPABASE (DIAMBIL DARI SECRETS STREAMLIT) ===
+# === 1. KONEKSI SUPABASE ===
 def inisialisasi_supabase() -> Client:
     url: str = st.secrets["SUPABASE_URL"]
     key: str = st.secrets["SUPABASE_KEY"]
@@ -16,48 +16,70 @@ def inisialisasi_supabase() -> Client:
 
 supabase = inisialisasi_supabase()
 
-# === 2. SISTEM AUTENTIKASI / LOGIN ===
+# === 2. SISTEM KEAMANAN LISENSI & LOGIN DINAMIS ===
 def sistem_login():
     if "logged_in" not in st.session_state:
         st.session_state["logged_in"] = False
 
     if not st.session_state["logged_in"]:
-        tab1, tab2 = st.tabs(["🔒 Masuk", "📝 Daftar Akun Baru"])
-        
-        with tab1:
-            st.subheader("Login Administrator")
-            username = st.text_input("Username", key="login_user")
-            password = st.text_input("Password", type="password", key="login_pass")
+        # Cek apakah sudah ada akun pengguna terdaftar di database
+        try:
+            cek_user = supabase.table("pengguna").select("*").execute()
+            ada_user = len(cek_user.data) > 0
+        except Exception:
+            ada_user = False
 
-            if st.button("Masuk 🔓", type="primary", use_container_width=True):
-                # Cek ke database Supabase apakah username & password cocok
-                fitur_cek = supabase.table("pengguna").select("*").eq("username", username).eq("password", password).execute()
-                if fitur_cek.data:
-                    st.session_state["logged_in"] = True
-                    st.success("Login Berhasil!")
-                    st.rerun()
-                else:
-                    st.error("Username atau Password salah!")
-                    
-        with tab2:
-            st.subheader("Registrasi Toko Baru")
-            new_user = st.text_input("Buat Username Baru", key="reg_user")
-            new_pass = st.text_input("Buat Password Baru", type="password", key="reg_pass")
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            st.write("")
             
-            if st.button("Daftar Sekarang ✨", use_container_width=True):
-                if not new_user or not new_pass:
-                    st.error("Semua kolom wajib diisi!")
-                else:
-                    try:
-                        # Simpan akun baru ke Supabase
-                        supabase.table("pengguna").insert({"username": new_user, "password": new_pass}).execute()
-                        st.success("Akun berhasil dibuat! Silakan pindah ke tab 'Masuk'.")
-                    except Exception:
-                        st.error("Username sudah digunakan orang lain!")
+            # JIKA BELUM ADA AKUN (Aplikasi Baru Pertama Kali Dibuka Klien)
+            if not ada_user:
+                st.subheader("🔑 Aktivasi Kunci Lisensi Aplikasi Baru")
+                st.info("Aplikasi belum diaktivasi. Silakan masukkan Kunci Lisensi resmi dari Developer.")
+                
+                input_lisensi = st.text_input("Masukkan Kunci Lisensi (License Key)")
+                buat_user = st.text_input("Buat Username Baru untuk Toko Anda")
+                buat_pass = st.text_input("Buat Password Baru", type="password")
+                
+                if st.button("Aktifkan Aplikasi ✨", type="primary", use_container_width=True):
+                    if not input_lisensi or not buat_user or not buat_pass:
+                        st.error("Semua kolom pengisian wajib diisi!")
+                    else:
+                        # Cek apakah lisensi terdaftar dan masih berstatus 'Tersedia'
+                        cek_lisensi = supabase.table("lisensi").select("*").eq("kode_kunci", input_lisensi.strip()).eq("status", "Tersedia").execute()
+                        
+                        if cek_lisensi.data:
+                            try:
+                                # 1. Daftarkan akun baru klien
+                                supabase.table("pengguna").insert({"username": buat_user.strip(), "password": buat_pass.strip()}).execute()
+                                # 2. Ubah status lisensi menjadi Terpakai agar tidak bisa digunakan lagi
+                                supabase.table("lisensi").update({"status": "Terpakai"}).eq("kode_kunci", input_lisensi.strip()).execute()
+                                st.success("Aktivasi Sukses! Silakan muat ulang halaman untuk masuk.")
+                                st.rerun()
+                            except Exception:
+                                st.error("Username tersebut sudah digunakan. Silakan pilih nama lain.")
+                        else:
+                            st.error("Kunci Lisensi Salah atau sudah kadaluwarsa/terpakai!")
+            
+            # JIKA SUDAH ADA AKUN (Kondisi Normal)
+            else:
+                st.subheader("🔒 Silakan Login Terlebih Dahulu")
+                username = st.text_input("Username Toko")
+                password = st.text_input("Password", type="password")
+
+                if st.button("Masuk 🔓", type="primary", use_container_width=True):
+                    fitur_cek = supabase.table("pengguna").select("*").eq("username", username.strip()).eq("password", password.strip()).execute()
+                    if fitur_cek.data:
+                        st.session_state["logged_in"] = True
+                        st.success("Login Berhasil!")
+                        st.rerun()
+                    else:
+                        st.error("Username atau Password salah!")
         return False
     return True
 
-# === 3. FUNGSI LOGIKA DATABASE SUPABASE ===
+# === 3. FUNGSI LOGIKA DATABASE BARANG ===
 def ambil_data(cari=""):
     try:
         if cari:
@@ -78,7 +100,6 @@ def ambil_riwayat():
         df = pd.DataFrame(response.data)
         if df.empty:
             return pd.DataFrame(columns=["waktu", "nama_barang", "tipe", "jumlah", "keterangan"])
-        # Format kolom waktu agar rapi di UI
         df["waktu"] = pd.to_datetime(df["waktu"]).dt.strftime('%Y-%m-%d %H:%M:%S')
         return df[["waktu", "nama_barang", "tipe", "jumlah", "keterangan"]]
     except Exception:
@@ -87,12 +108,9 @@ def ambil_riwayat():
 def catat_log(nama_barang, tipe, jumlah, keterangan):
     try:
         supabase.table("riwayat").insert({
-            "nama_barang": nama_barang,
-            "tipe": tipe,
-            "jumlah": jumlah,
-            "keterangan": keterangan
+            "nama_barang": nama_barang, "tipe": tipe, "jumlah": jumlah, "keterangan": keterangan
         }).execute()
-    except Exception as e:
+    except Exception:
         pass
 
 # === 4. FUNGSI PENDUKUNG ===
@@ -107,7 +125,7 @@ def beri_warna_stok(row):
         return ["background-color: #ffcccc; color: #b30000; font-weight: bold"] * len(row)
     return [""] * len(row)
 
-# === 5. LOGIKA UTAMA APLIKASI ===
+# === 5. LOGIKA UTAMA TAMPILAN APLIKASI ===
 if sistem_login():
     st.sidebar.title("📌 Menu Navigasi")
     menu = st.sidebar.radio("Pilih Halaman:", ["Stok Barang Utama", "📋 Riwayat / Log Transaksi"])
@@ -141,8 +159,8 @@ if sistem_login():
                             catat_log(nama, "Barang Baru", stok, f"Pendaftaran barang baru dengan stok awal {stok}")
                             st.success(f"Barang '{nama}' berhasil didaftarkan di Cloud!")
                             st.rerun()
-                        except Exception:
-                            st.error(f"Gagal! Barang '{nama}' mungkin sudah terdaftar.")
+                        except Exception as e:
+                            st.error(f"Eror Sistem: {str(e)}")
 
             elif mode == "Update Stok Masuk/Keluar":
                 df_pilihan = ambil_data()
@@ -150,12 +168,12 @@ if sistem_login():
                     st.warning("Belum ada data barang di database.")
                 else:
                     pilihan_barang = st.selectbox("Pilih Barang:", df_pilihan["nama"].tolist())
-                    data_barang = df_pilihan[df_pilihan["nama"] == pilihan_barang].iloc[0]
+                    data_barang = df_pilihan[df_pilihan["nama"] == pilihan_barang].iloc
 
                     st.info(f"Stok saat ini: **{data_barang['stok']} Pcs** | Harga: **Rp {float(data_barang['harga']):,.0f}**")
                     jenis_opsi = st.selectbox("Jenis Mutasi:", ["Stok Masuk (+)", "Stok Keluar (-)"])
                     jumlah_mutasi = st.number_input("Jumlah Perubahan Stok", min_value=1, step=1)
-                    keterangan = st.text_input("Keterangan / Catatan tambahan", placeholder="Contoh: Restock Supplier / Pengiriman ke Pabrik")
+                    keterangan = st.text_input("Keterangan / Catatan tambahan", placeholder="Contoh: Restock Supplier")
                     harga_baru = st.number_input("Perbarui Harga (Biarkan jika tetap)", value=float(data_barang["harga"]))
 
                     if st.button("🔄 Proses Perubahan", type="primary"):
@@ -181,45 +199,3 @@ if sistem_login():
                         supabase.table("barang").delete().eq("nama", pilihan_barang).execute()
                         catat_log(pilihan_barang, "Hapus", 0, "Barang dihapus permanen dari sistem")
                         st.success("Barang berhasil dihapus!")
-                        st.rerun()
-
-        with kolom_kanan:
-            st.subheader("📋 Daftar Stok Gudang Real-time")
-            cari_input = st.text_input("🔍 Cari Nama Barang...", placeholder="Ketik untuk memfilter...")
-            df_stok = ambil_data(cari_input)
-
-            if not df_stok.empty:
-                df_tampil = df_stok.copy()
-                df_tampil.columns = ["ID", "Nama Barang", "Stok", "Harga (Rp)"]
-
-                stok_kritis = df_tampil[df_tampil["Stok"] <= 2]
-                if not stok_kritis.empty:
-                    st.error(f"🚨 **Peringatan:** Ada {len(stok_kritis)} barang dengan stok kritis (≤ 2 pcs)!", icon="⚠️")
-
-                df_terpola = df_tampil.style.apply(beri_warna_stok, axis=1)
-                st.dataframe(df_terpola, use_container_width=True, column_config={"Harga (Rp)": st.column_config.NumberColumn(format="Rp %d")})
-
-                st.markdown("---")
-                m1, m2, m3 = st.columns(3)
-                m1.metric(label="Total Jenis Barang", value=f"{len(df_tampil)} Item")
-                m2.metric(label="Total Seluruh Stok", value=f"{df_tampil['Stok'].sum()} Pcs")
-
-                with m3:
-                    st.write("📥 **Unduh Laporan**")
-                    data_excel = konversi_ke_excel(df_tampil, "Daftar Stok")
-                    st.download_button(label="🟢 Ekspor ke Excel (.xlsx)", data=data_excel, file_name="laporan_stok_barang.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
-            else:
-                st.info("Tidak ada data barang ditemukan.")
-
-    elif menu == "📋 Riwayat / Log Transaksi":
-        st.title("📋 Log & Riwayat Mutasi Stok")
-        st.markdown("Rekaman otomatis aktivitas pergudangan.")
-        st.markdown("---")
-        df_riwayat = ambil_riwayat()
-
-        if not df_riwayat.empty:
-            df_riwayat_tampil = df_riwayat.copy()
-            df_riwayat_tampil.columns = ["Waktu & Tanggal", "Nama Barang", "Tipe Aktivitas", "Jumlah (Pcs)", "Keterangan / Catatan"]
-            st.dataframe(df_riwayat_tampil, use_container_width=True)
-            st.markdown("---")
-            data_excel_log = konversi_ke_excel(df_riwayat_tampil, "Log Riwayat")
