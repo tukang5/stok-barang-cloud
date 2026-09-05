@@ -9,9 +9,7 @@ st.set_page_config(
 )
 
 # === 1. KONEKSI SUPABASE (DIAMBIL DARI SECRETS STREAMLIT) ===
-@st.cache_resource
 def inisialisasi_supabase() -> Client:
-    # Membaca data kredensial dari sistem rahasia Streamlit Cloud
     url: str = st.secrets["SUPABASE_URL"]
     key: str = st.secrets["SUPABASE_KEY"]
     return create_client(url, key)
