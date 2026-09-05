@@ -22,20 +22,38 @@ def sistem_login():
         st.session_state["logged_in"] = False
 
     if not st.session_state["logged_in"]:
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            st.write("")
-            st.subheader("🔒 Silakan Login Terlebih Dahulu")
-            username = st.text_input("Username Administrator")
-            password = st.text_input("Password", type="password")
+        tab1, tab2 = st.tabs(["🔒 Masuk", "📝 Daftar Akun Baru"])
+        
+        with tab1:
+            st.subheader("Login Administrator")
+            username = st.text_input("Username", key="login_user")
+            password = st.text_input("Password", type="password", key="login_pass")
 
             if st.button("Masuk 🔓", type="primary", use_container_width=True):
-                if username == "tukang5" and password == "iduladha#15":
+                # Cek ke database Supabase apakah username & password cocok
+                fitur_cek = supabase.table("pengguna").select("*").eq("username", username).eq("password", password).execute()
+                if fitur_cek.data:
                     st.session_state["logged_in"] = True
                     st.success("Login Berhasil!")
                     st.rerun()
                 else:
                     st.error("Username atau Password salah!")
+                    
+        with tab2:
+            st.subheader("Registrasi Toko Baru")
+            new_user = st.text_input("Buat Username Baru", key="reg_user")
+            new_pass = st.text_input("Buat Password Baru", type="password", key="reg_pass")
+            
+            if st.button("Daftar Sekarang ✨", use_container_width=True):
+                if not new_user or not new_pass:
+                    st.error("Semua kolom wajib diisi!")
+                else:
+                    try:
+                        # Simpan akun baru ke Supabase
+                        supabase.table("pengguna").insert({"username": new_user, "password": new_pass}).execute()
+                        st.success("Akun berhasil dibuat! Silakan pindah ke tab 'Masuk'.")
+                    except Exception:
+                        st.error("Username sudah digunakan orang lain!")
         return False
     return True
 
