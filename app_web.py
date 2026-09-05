@@ -29,7 +29,7 @@ def sistem_login():
         except Exception:
             ada_user = False
 
-        col1, col2, col3 = st.columns()
+        col1, col2, col3 = st.columns(3)
         with col2:
             st.write("")
             
