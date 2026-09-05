@@ -169,7 +169,7 @@ if sistem_login():
         st.markdown(
             "Terhubung otomatis dengan Google Sheets. Data aman anti-hilang."
         )
-        st.hr()
+        st.markdown("---")
 
         kolom_kiri, kolom_kanan = st.columns([2, 3], gap="large")
 
