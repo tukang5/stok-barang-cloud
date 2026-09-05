@@ -46,16 +46,12 @@ def sistem_login():
                     if not input_lisensi or not buat_user or not buat_pass:
                         st.error("Semua kolom pengisian wajib diisi!")
                     else:
-                        # 1. Cari lisensi di database dengan metode pencarian aman (tidak sensitif huruf besar/kecil)
-cek_lisensi = supabase.table("lisensi").select("*").ilike("kode_kunci", input_lisensi.strip()).execute()
-
-# 2. Validasi data array dari Supabase secara tepat
-lisensi_valid = False
-if cek_lisensi.data and len(cek_lisensi.data) > 0:
-    # Ambil baris pertama dari hasil pencarian database
-    data_kunci = cek_lisensi.data[0] 
-    if str(data_kunci.get("status", "")).lower() == "tersedia":
-        lisensi_valid = True
+                        cek_lisensi = supabase.table("lisensi").select("*").ilike("kode_kunci", input_lisensi.strip()).execute()
+                        lisensi_valid = False
+                        if cek_lisensi.data and len(cek_lisensi.data) > 0:
+                            data_kunci = cek_lisensi.data[0] 
+                            if str(data_kunci.get("status", "")).lower() == "tersedia":
+                                lisensi_valid = True
 
 # 3. Jika lisensi ditemukan dan berstatus tersedia, loloskan sistem!
 if lisensi_valid:
