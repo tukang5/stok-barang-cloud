@@ -29,7 +29,7 @@ def sistem_login():
         except Exception:
             ada_user = False
 
-        col1, col2, col3 = st.columns([1, 2, 1])
+        col1, col2, col3 = st.columns()
         with col2:
             st.write("")
             
@@ -51,14 +51,13 @@ def sistem_login():
                         if cek_lisensi.data:
                             try:
                                 supabase.table("pengguna").insert({"username": buat_user.strip(), "password": buat_pass.strip()}).execute()
-                                supabase.table("lisensi").update({"status": "Terpakai"}).eq("kode_kunci", input_lisensi.strip()).execute()
+                                supabase.table("lisensi").update({"status": "Terpakai"}).eq("kode_kunci", input_lisensi.strip().upper()).execute()
                                 st.success("Aktivasi Sukses! Silakan muat ulang halaman untuk masuk.")
                                 st.rerun()
                             except Exception:
                                 st.error("Username tersebut sudah digunakan. Silakan pilih nama lain.")
                         else:
                             st.error("Kunci Lisensi Salah atau sudah kadaluwarsa/terpakai!")
-            
             # JIKA SUDAH ADA AKUN (Kondisi Normal)
             else:
                 st.subheader("🔒 Silakan Login Terlebih Dahulu")
@@ -117,11 +116,6 @@ def konversi_ke_excel(df, sheet_name="Data"):
         df.to_excel(writer, index=False, sheet_name=sheet_name)
     return output.getvalue()
 
-def beri_warna_stok(row):
-    if row["Stok"] <= 2:
-        return ["background-color: #ffcccc; color: #b30000; font-weight: bold"] * len(row)
-    return [""] * len(row)
-
 # === 5. LOGIKA UTAMA TAMPILAN APLIKASI ===
 if sistem_login():
     st.sidebar.title("📌 Menu Navigasi")
@@ -158,7 +152,6 @@ if sistem_login():
                             st.rerun()
                         except Exception as e:
                             st.error(f"Eror Sistem: {str(e)}")
-
             elif mode == "Update Stok Masuk/Keluar":
                 df_pilihan = ambil_data()
                 if df_pilihan.empty:
@@ -181,10 +174,13 @@ if sistem_login():
                         if stok_akhir < 0:
                             st.error("Gagal! Stok tidak boleh kurang dari 0.")
                         else:
-                            supabase.table("barang").update({"stok": stok_akhir, "harga": harga_baru}).eq("id", int(data_barang["id"])).execute()
-                            catat_log(pilihan_barang, tipe_log, jumlah_mutasi, keterangan)
-                            st.success("Stok berhasil diperbarui!")
-                            st.rerun()
+                            try:
+                                supabase.table("barang").update({"stok": stok_akhir, "harga": harga_baru}).eq("id", int(data_barang["id"])).execute()
+                                catat_log(pilihan_barang, tipe_log, jumlah_mutasi, keterangan)
+                                st.success("Stok berhasil diperbarui!")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Eror Perubahan: {str(e)}")
 
             elif mode == "Hapus Barang":
                 df_pilihan = ambil_data()
@@ -193,11 +189,106 @@ if sistem_login():
                 else:
                     pilihan_barang = st.selectbox("Pilih Barang yang akan dihapus:", df_pilihan["nama"].tolist())
                     if st.button("🗑️ Hapus Permanen", type="secondary"):
-                        supabase.table("barang").delete().eq("nama", pilihan_barang).execute()
-                        catat_log(pilihan_barang, "Hapus", 0, "Barang dihapus permanen dari sistem")
-                        st.success("Barang berhasil dihapus!")
-                        st.rerun()
+                        try:
+                            supabase.table("barang").delete().eq("nama", pilihan_barang).execute()
+                            catat_log(pilihan_barang, "Hapus", 0, "Barang dihapus permanen dari sistem")
+                            st.success("Barang berhasil dihapus!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Eror Hapus: {str(e)}")
 
         with kolom_kanan:
             st.subheader("📋 Daftar Stok Gudang Real-time")
             cari_input = st.text_input("🔍 Cari Nama Barang...", placeholder="Ketik untuk memfilter...")
+            df_stok = ambil_data(cari_input)
+
+            if not df_stok.empty:
+                df_tampil = df_stok.copy()
+                df_tampil.columns = ["ID", "Nama Barang", "Stok", "Harga (Rp)"]
+
+                stok_kritis = df_tampil[df_tampil["Stok"] <= 2]
+                if not stok_kritis.empty:
+                    st.error(f"🚨 **Peringatan:** Ada {len(stok_kritis)} barang dengan stok kritis (≤ 2 pcs)!", icon="⚠️")
+
+                df_tampil["Harga (Rp)"] = df_tampil["Harga (Rp)"].apply(lambda x: f"Rp {x:,.0f}".replace(",", "."))
+                st.table(df_tampil)
+
+                st.markdown("---")
+                m1, m2, m3 = st.columns(3)
+                m1.metric(label="Total Jenis Barang", value=f"{len(df_tampil)} Item")
+                m2.metric(label="Total Seluruh Stok", value=f"{df_stok['stok'].sum()} Pcs")
+
+                with m3:
+                    st.write("📥 **Unduh Laporan**")
+                    data_excel = konversi_ke_excel(df_tampil, "Daftar Stok")
+                    st.download_button(label="🟢 Ekspor ke Excel (.xlsx)", data=data_excel, file_name="laporan_stok_barang.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
+            else:
+                st.info("Tidak ada data barang ditemukan.")
+
+    elif menu == "📋 Riwayat / Log Transaksi":
+        st.title("📋 Log & Riwayat Mutasi Stok")
+        st.markdown("---")
+        df_riwayat = ambil_riwayat()
+
+        if not df_riwayat.empty:
+            df_riwayat_tampil = df_riwayat.copy()
+            df_riwayat_tampil.columns = ["Waktu & Tanggal", "Nama Barang", "Tipe Aktivitas", "Jumlah (Pcs)", "Keterangan / Catatan"]
+            
+            st.table(df_riwayat_tampil)
+            st.markdown("---")
+            
+            st.subheader("🖨️ Cetak Nota Transaksi Keluar")
+            df_keluar = df_riwayat_tampil[df_riwayat_tampil["Tipe Aktivitas"] == "Keluar"]
+            
+            if df_keluar.empty:
+                st.info("Belum ada transaksi 'Stok Keluar' yang bisa dibuatkan nota.")
+            else:
+                opsi_nota = [f"{row['Waktu & Tanggal']} - {row['Nama Barang']} ({row['Jumlah (Pcs)']} Pcs)" for _, row in df_keluar.iterrows()]
+                transaksi_terpilih = st.selectbox("Pilih Transaksi yang Ingin Dicetak Notanya:", opsi_nota)
+                
+                indeks_pilihan = opsi_nota.index(transaksi_terpilih)
+                data_nota = df_keluar.iloc[indeks_pilihan]
+                
+                html_nota = f"""
+                <div style="font-family: 'Courier New', Courier, monospace; width: 280px; padding: 15px; border: 1px dashed #000; background-color: #fff; color: #000; margin: 0 auto;">
+                    <div style="text-align: center; font-weight: bold; font-size: 14px;">NOTA PENGELUARAN STOK</div>
+                    <div style="text-align: center; font-size: 11px; margin-bottom: 10px;">ENTERPRISE CLOUD SYSTEM</div>
+                    <hr style="border-top: 1px dashed #000;">
+                    <table style="width: 100%; font-size: 11px;">
+                        <tr><td>Waktu</td><td>: {data_nota['Waktu & Tanggal']}</td></tr>
+                        <tr><td>Barang</td><td>: {data_nota['Nama Barang']}</td></tr>
+                        <tr><td>Jumlah</td><td>: {data_nota['Jumlah (Pcs)']} Pcs</td></tr>
+                        <tr><td>Status</td><td>: BERHASIL (KELUAR)</td></tr>
+                    </table>
+                    <hr style="border-top: 1px dashed #000;">
+                    <div style="font-size: 11px; word-wrap: break-word;">
+                        <strong>Catatan/Keterangan:</strong><br>
+                        {data_nota['Keterangan / Catatan'] if data_nota['Keterangan / Catatan'] else '-'}
+                    </div>
+                    <hr style="border-top: 1px dashed #000;">
+                    <div style="text-align: center; font-size: 10px; margin-top: 10px; font-style: italic;">
+                        Terima kasih atas kerja samanya.<br>Dokumen sah sistem cloud gudang.
+                    </div>
+                </div>
+                """
+                st.markdown("### 🔍 Pratinjau Nota:")
+                st.html(html_nota)
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+                js_cetak = """
+                <script>
+                function cetakNota() {
+                    window.print();
+                }
+                </script>
+                <button onclick="cetakNota()" style="width: 100%; background-color: #ff4b4b; color: white; border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer;">
+                    🖨️ Cetak Transaksi Sekarang / Simpan ke PDF
+                </button>
+                """
+                st.components.v1.html(js_cetak, height=50)
+
+            st.markdown("---")
+            data_excel_log = konversi_ke_excel(df_riwayat_tampil, "Log Riwayat")
+            st.download_button(label="🟢 Unduh Seluruh Log Riwayat (.xlsx)", data=data_excel_log, file_name="riwayat_mutasi_stok.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        else:
+            st.info("Belum ada riwayat aktivitas.")
