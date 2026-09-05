@@ -46,9 +46,13 @@ def sistem_login():
                     if not input_lisensi or not buat_user or not buat_pass:
                         st.error("Semua kolom pengisian wajib diisi!")
                     else:
-                        cek_lisensi = supabase.table("lisensi").select("*").eq("kode_kunci", input_lisensi.strip().upper()).eq("status", "Tersedia").execute()
-                        
+                        cek_lisensi = supabase.table("lisensi").select("*").ilike("kode_kunci", input_lisensi.strip()).execute()
+                        lisensi_valid = False
                         if cek_lisensi.data:
+                            data_kunci = cek_lisensi.data[0]
+                            if str(data_kunci.get("status", "")).lower() == "tersedia":
+                                lisensi_valid = True
+                        if lisensi_valid:
                             try:
                                 supabase.table("pengguna").insert({"username": buat_user.strip(), "password": buat_pass.strip()}).execute()
                                 supabase.table("lisensi").update({"status": "Terpakai"}).eq("kode_kunci", input_lisensi.strip().upper()).execute()
