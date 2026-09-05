@@ -46,14 +46,11 @@ def sistem_login():
                     if not input_lisensi or not buat_user or not buat_pass:
                         st.error("Semua kolom pengisian wajib diisi!")
                     else:
-                        # Cek apakah lisensi terdaftar dan masih berstatus 'Tersedia'
                         cek_lisensi = supabase.table("lisensi").select("*").eq("kode_kunci", input_lisensi.strip()).eq("status", "Tersedia").execute()
                         
                         if cek_lisensi.data:
                             try:
-                                # 1. Daftarkan akun baru klien
                                 supabase.table("pengguna").insert({"username": buat_user.strip(), "password": buat_pass.strip()}).execute()
-                                # 2. Ubah status lisensi menjadi Terpakai agar tidak bisa digunakan lagi
                                 supabase.table("lisensi").update({"status": "Terpakai"}).eq("kode_kunci", input_lisensi.strip()).execute()
                                 st.success("Aktivasi Sukses! Silakan muat ulang halaman untuk masuk.")
                                 st.rerun()
@@ -199,3 +196,8 @@ if sistem_login():
                         supabase.table("barang").delete().eq("nama", pilihan_barang).execute()
                         catat_log(pilihan_barang, "Hapus", 0, "Barang dihapus permanen dari sistem")
                         st.success("Barang berhasil dihapus!")
+                        st.rerun()
+
+        with kolom_kanan:
+            st.subheader("📋 Daftar Stok Gudang Real-time")
+            cari_input = st.text_input("🔍 Cari Nama Barang...", placeholder="Ketik untuk memfilter...")
