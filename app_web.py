@@ -46,7 +46,7 @@ def sistem_login():
                     if not input_lisensi or not buat_user or not buat_pass:
                         st.error("Semua kolom pengisian wajib diisi!")
                     else:
-                        cek_lisensi = supabase.table("lisensi").select("*").eq("kode_kunci", input_lisensi.strip()).eq("status", "Tersedia").execute()
+                        cek_lisensi = supabase.table("lisensi").select("*").eq("kode_kunci", input_lisensi.strip().upper()).eq("status", "Tersedia").execute()
                         
                         if cek_lisensi.data:
                             try:
