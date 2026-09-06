@@ -82,7 +82,7 @@ def sistem_login():
                 if st.button("Masuk 🔓", type="primary", use_container_width=True):
                     fitur_cek = supabase.table("pengguna").select("*").eq("username", username.strip()).eq("password", password.strip()).execute()
                     if fitur_cek.data and len(fitur_cek.data) > 0:
-                        data_login = fitur_cek.data
+                        data_login = fitur_cek.data[0]
                         st.session_state["logged_in"] = True
                         st.session_state["user_role"] = data_login.get("role", "Owner")
                         st.success("Login Berhasil!")
