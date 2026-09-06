@@ -2,6 +2,9 @@ import io
 import pandas as pd
 import streamlit as st
 from supabase import create_client, Client
+import openpyxl
+import openpyxl.styles
+import openpyxl.utils
 
 # Set konfigurasi halaman web
 st.set_page_config(
@@ -123,12 +126,59 @@ def catat_log(nama_barang, tipe, jumlah, keterangan):
     except Exception:
         pass
 
-# === 4. FUNGSI PENDUKUNG ===
+# === 4. FUNGSI PENDUKUNG (FORMAT EXCEL OTOMATIS & REAL-TIME) ===
 def konversi_ke_excel(df, sheet_name="Data"):
     output = io.BytesIO()
+    
+    # 1. Pastikan data yang ditarik selalu versi paling segar dari DataFrame Pandas
+    df_Format = df.copy()
+    
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        df.to_excel(writer, index=False, sheet_name=sheet_name)
+        df_Format.to_excel(writer, index=False, sheet_name=sheet_name, startrow=3)
+        
+        # Ambil kontrol workbook openpyxl untuk merapikan desain kolom
+        workbook = writer.book
+        worksheet = writer.sheets[sheet_name]
+        
+        # 2. Tambahkan Judul Laporan Formal di baris paling atas Excel
+        worksheet["A1"] = f"LAPORAN RESMI PERSIDIAAN GUDANG ({sheet_name.upper()})"
+        worksheet["A1"].font = openpyxl.styles.Font(name="Arial", size=14, bold=True, color="1A365D")
+        worksheet["A2"] = "SISTEM MANAJEMEN STOK ENTERPRISE CLOUD REALT-TIME"
+        worksheet["A2"].font = openpyxl.styles.Font(name="Arial", size=10, italic=True, color="4A5568")
+        
+        # 3. Desain Header Tabel (Warna Biru Navy Pro + Teks Putih Tebal)
+        header_font = openpyxl.styles.Font(name="Arial", size=11, bold=True, color="FFFFFF")
+        header_fill = openpyxl.styles.PatternFill(start_color="2B6CB0", end_color="2B6CB0", fill_type="solid")
+        alignment_center = openpyxl.styles.Alignment(horizontal="center", vertical="center")
+        
+        # Warnai baris judul kolom (baris ke-4 di Excel karena startrow=3)
+        for col_num in range(1, len(df_Format.columns) + 1):
+            cell = worksheet.cell(row=4, column=col_num)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = alignment_center
+        
+        # 4. Auto-Fit: Membuat lebar kolom otomatis melebar pas sesuai panjang teks (Anti-Terpotong/###)
+        for col in worksheet.columns:
+            max_len = max(len(str(cell.value or '')) for cell in col)
+            col_letter = openpyxl.utils.get_column_letter(col[0].column)
+            worksheet.column_dimensions[col_letter].width = max(max_len + 4, 12)
+            
+        # 5. Berikan garis border tipis abu-abu agar tabel rapi saat dicetak di kertas
+        thin_border = openpyxl.styles.Border(
+            left=openpyxl.styles.Side(style='thin', color='CBD5E0'),
+            right=openpyxl.styles.Side(style='thin', color='CBD5E0'),
+            top=openpyxl.styles.Side(style='thin', color='CBD5E0'),
+            bottom=openpyxl.styles.Side(style='thin', color='CBD5E0')
+        )
+        for row in worksheet.iter_rows(min_row=4, max_row=worksheet.max_row, min_col=1, max_col=len(df_Format.columns)):
+            for cell in row:
+                cell.border = thin_border
+                if cell.row > 4: # Mengatur isi data agar rata kiri teks, rata kanan angka
+                    cell.alignment = openpyxl.styles.Alignment(vertical="center")
+
     return output.getvalue()
+    
 # === 5. LOGIKA UTAMA TAMPILAN APLIKASI ===
 if sistem_login():
     st.sidebar.title("📌 Menu Navigasi")
