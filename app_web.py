@@ -220,7 +220,7 @@ if sistem_login():
                             st.rerun()
                         except Exception as e:
                             st.error(f"Eror Hapus: {str(e)}")
-        with kolom_kanan:
+                with kolom_kanan:
             st.subheader("📋 Daftar Stok Gudang Real-time")
             cari_input = st.text_input("🔍 Cari Nama Barang...", placeholder="Ketik untuk memfilter...")
             df_stok = ambil_data(cari_input)
@@ -243,36 +243,40 @@ if sistem_login():
                 total_omzet = (df_stok["stok"] * df_stok["harga"]).sum()
                 total_profit_bersih = total_omzet - total_modal
 
-                                total_modal = (df_stok["stok"] * df_stok["harga_beli"]).sum()
-                total_omzet = (df_stok["stok"] * df_stok["harga"]).sum()
-                total_profit_bersih = total_omzet - total_modal
+                txt_modal = f"Rp {total_modal:,.0f}".replace(",", ".")
+                txt_omzet = f"Rp {total_omzet:,.0f}".replace(",", ".")
+                txt_profit = f"Rp {total_profit_bersih:,.0f}".replace(",", ".")
 
-                # 🌟 FITUR BARU: KARTU DASHBOARD FINANSIAL RESPRONSIF (ANTI TERPOTONG DI HP)
+                # 🌟 KARTU DASHBOARD FINANSIAL RESPRONSIF (ANTI TERPOTONG DI HP)
                 html_kartu_keuangan = f"""
-                <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;">
-                    <div style="flex: 1; min-width: 140px; background: linear-gradient(135deg, #2B6CB0, #4299E1); padding: 15px; border-radius: 12px; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-                        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.9;">📦 Total Stok</div>
+                <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; font-family: sans-serif;">
+                    <div style="flex: 1; min-width: 140px; background: linear-gradient(135deg, #2B6CB0, #4299E1); padding: 15px; border-radius: 12px; color: white;">
+                        <div style="font-size: 11px; text-transform: uppercase; opacity: 0.9;">📦 Total Stok</div>
                         <div style="font-size: 18px; font-weight: bold; margin-top: 5px;">{df_stok['stok'].sum()} <span style="font-size: 12px; font-weight: normal;">Pcs</span></div>
                     </div>
-                    <div style="flex: 1; min-width: 140px; background: linear-gradient(135deg, #4A5568, #718096); padding: 15px; border-radius: 12px; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-                        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.9;">📉 Total Modal Harta</div>
-                        <div style="font-size: 16px; font-weight: bold; margin-top: 5px;">Rp {total_modal:,.0f}".replace(",", ".")}</div>
+                    <div style="flex: 1; min-width: 140px; background: linear-gradient(135deg, #4A5568, #718096); padding: 15px; border-radius: 12px; color: white;">
+                        <div style="font-size: 11px; text-transform: uppercase; opacity: 0.9;">📉 Total Modal</div>
+                        <div style="font-size: 16px; font-weight: bold; margin-top: 5px;">{txt_modal}</div>
                     </div>
-                    <div style="flex: 1; min-width: 140px; background: linear-gradient(135deg, #D69E2E, #ECC94B); padding: 15px; border-radius: 12px; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-                        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.9;">📈 Potensi Omzet</div>
-                        <div style="font-size: 16px; font-weight: bold; margin-top: 5px;">Rp {total_omzet:,.0f}".replace(",", ".")}</div>
+                    <div style="flex: 1; min-width: 140px; background: linear-gradient(135deg, #D69E2E, #ECC94B); padding: 15px; border-radius: 12px; color: white;">
+                        <div style="font-size: 11px; text-transform: uppercase; opacity: 0.9;">📈 Potensi Omzet</div>
+                        <div style="font-size: 16px; font-weight: bold; margin-top: 5px;">{txt_omzet}</div>
                     </div>
-                    <div style="flex: 1; min-width: 140px; background: linear-gradient(135deg, #2F855A, #48BB78); padding: 15px; border-radius: 12px; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-                        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.9;">💰 Estimasi Profit</div>
-                        <div style="font-size: 16px; font-weight: bold; margin-top: 5px;">Rp {total_profit_bersih:,.0f}".replace(",", ".")}</div>
+                    <div style="flex: 1; min-width: 140px; background: linear-gradient(135deg, #2F855A, #48BB78); padding: 15px; border-radius: 12px; color: white;">
+                        <div style="font-size: 11px; text-transform: uppercase; opacity: 0.9;">💰 Estimasi Profit</div>
+                        <div style="font-size: 16px; font-weight: bold; margin-top: 5px;">{txt_profit}</div>
                     </div>
                 </div>
                 """
                 st.markdown(html_kartu_keuangan, unsafe_allow_html=True)
 
                 st.markdown("### 📊 Grafik Perbandingan Kuantitas Stok")
+                df_grafik = df_stok[["nama", "stok"]].copy()
+                df_grafik.columns = ["Nama Barang", "Jumlah Stok"]
+                st.bar_chart(data=df_grafik, x="Nama Barang", y="Jumlah Stok", color="#2B6CB0")
 
-                with m4:
+                st.markdown("---")
+                with st.container():
                     data_excel = konversi_ke_excel(df_tampil, "Daftar Stok")
                     st.download_button(label="🟢 Ekspor ke Excel (.xlsx)", data=data_excel, file_name="laporan_stok_barang.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
             else:
