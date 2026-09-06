@@ -324,8 +324,36 @@ if sistem_login():
                 """
                 st.components.v1.html(js_cetak, height=50)
 
+                # 🌟 FITUR PREMIUM BARU: ANALISIS AI PINTAR PERPUTARAN BARANG GUDANG
+                st.markdown("---")
+                st.markdown("### 🧠 Rekomendasi Analisis AI Gudang (Real-time)")
+                
+                # Filter hanya transaksi yang 'Keluar' untuk dianalisis kelarisannya
+                df_analisis_keluar = df_riwayat_tampil[df_riwayat_tampil["Tipe Aktivitas"] == "Keluar"]
+                
+                if df_analisis_keluar.empty:
+                    st.info("🤖 AI belum bisa memberikan analisis karena belum ada transaksi 'Stok Keluar' di database.")
+                else:
+                    try:
+                        # Hitung total barang keluar dikelompokkan berdasarkan nama barang
+                        df_laris = df_analisis_keluar.groupby("Nama Barang")["Jumlah (Pcs)"].sum().reset_index()
+                        df_laris = df_laris.sort_values(by="Jumlah (Pcs)", ascending=False)
+                        
+                        barang_paling_laris = df_laris.iloc[0]["Nama Barang"]
+                        jumlah_paling_laris = df_laris.iloc[0]["Jumlah (Pcs)"]
+                        
+                        # Berikan kotak analisis rekomendasi pintar otomatis
+                        st.success(f"""
+                        **🤖 Laporan Rekomendasi AI Gudang:**
+                        *   📈 **Produk Terlaris (Fast Moving):** Produk **'{barang_paling_laris}'** menjadi komoditas paling tinggi tingkat penjualannya dengan total **{jumlah_paling_laris} Pcs** keluar gudang.
+                        *   💡 **Saran Strategis AI:** Disarankan untuk meningkatkan kuota pemesanan (*restock*) pada produk **'{barang_paling_laris}'** kepada pihak supplier sebanyak 20% pada bulan ini untuk menghindari kendala kekosongan stok (*out of stock*) akibat tingginya permintaan pasar.
+                        """)
+                    except Exception:
+                        st.info("🤖 AI sedang membaca struktur data riwayat cloud...")
+
             st.markdown("---")
             data_excel_log = konversi_ke_excel(df_riwayat_tampil, "Log Riwayat")
+
             st.download_button(label="🟢 Unduh Seluruh Log Riwayat (.xlsx)", data=data_excel_log, file_name="riwayat_mutasi_stok.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         else:
             st.info("Belum ada riwayat aktivitas.")
