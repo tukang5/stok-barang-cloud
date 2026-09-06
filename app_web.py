@@ -20,6 +20,8 @@ supabase = inisialisasi_supabase()
 def sistem_login():
     if "logged_in" not in st.session_state:
         st.session_state["logged_in"] = False
+    if "user_role" not in st.session_state:
+        st.session_state["user_role"] = "Owner"
 
     if not st.session_state["logged_in"]:
         # Cek apakah sudah ada akun pengguna terdaftar di database
@@ -43,8 +45,6 @@ def sistem_login():
                 buat_pass = st.text_input("Buat Password Baru", type="password")
                 buat_role = st.selectbox("Pilih Hak Akses Peran (Role):", ["Owner", "Karyawan"])
                 
-                supabase.table("pengguna").insert({"username": buat_user.strip(), "password": buat_pass.strip(), "role": buat_role}).execute()
-
                 if st.button("Aktifkan Aplikasi ✨", type="primary", use_container_width=True):
                     if not input_lisensi or not buat_user or not buat_pass:
                         st.error("Semua kolom pengisian wajib diisi!")
@@ -52,7 +52,6 @@ def sistem_login():
                         cek_lisensi = supabase.table("lisensi").select("*").ilike("kode_kunci", input_lisensi.strip()).execute()
                         
                         lisensi_valid = False
-                        # PERBAIKAN MUTAKHIR: Membaca indeks array [0] dari Supabase secara tepat
                         if cek_lisensi.data and len(cek_lisensi.data) > 0:
                             data_kunci = cek_lisensi.data[0]
                             if str(data_kunci.get("status", "")).lower() == "tersedia":
@@ -60,15 +59,17 @@ def sistem_login():
                         
                         if lisensi_valid:
                             try:
-                                supabase.table("pengguna").insert({"username": buat_user.strip(), "password": buat_pass.strip()}).execute()
+                                supabase.table("pengguna").insert({"username": buat_user.strip(), "password": buat_pass.strip(), "role": buat_role}).execute()
                                 supabase.table("lisensi").update({"status": "Terpakai"}).ilike("kode_kunci", input_lisensi.strip()).execute()
-                                st.success("Aktivasi Sukses! Silakan muat ulang halaman untuk masuk.")
+                                
+                                st.session_state["logged_in"] = True
+                                st.session_state["user_role"] = buat_role
+                                st.success("Aktivasi Sukses! Selamat Datang di Dashboard Toko Anda.")
                                 st.rerun()
-                            except Exception:
-                                st.error("Username tersebut sudah digunakan. Silakan pilih nama lain.")
+                            except Exception as e:
+                                st.error(f"Gagal Registrasi: {str(e)}")
                         else:
                             st.error("Kunci Lisensi Salah atau sudah kadaluwarsa/terpakai!")
-
             # JIKA SUDAH ADA AKUN (Kondisi Normal)
             else:
                 st.subheader("🔒 Silakan Login Terlebih Dahulu")
@@ -77,8 +78,10 @@ def sistem_login():
 
                 if st.button("Masuk 🔓", type="primary", use_container_width=True):
                     fitur_cek = supabase.table("pengguna").select("*").eq("username", username.strip()).eq("password", password.strip()).execute()
-                    if fitur_cek.data:
+                    if fitur_cek.data and len(fitur_cek.data) > 0:
+                        data_login = fitur_cek.data[0]
                         st.session_state["logged_in"] = True
+                        st.session_state["user_role"] = data_login.get("role", "Owner")
                         st.success("Login Berhasil!")
                         st.rerun()
                     else:
@@ -126,16 +129,17 @@ def konversi_ke_excel(df, sheet_name="Data"):
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
         df.to_excel(writer, index=False, sheet_name=sheet_name)
     return output.getvalue()
-
 # === 5. LOGIKA UTAMA TAMPILAN APLIKASI ===
 if sistem_login():
     st.sidebar.title("📌 Menu Navigasi")
     menu = st.sidebar.radio("Pilih Halaman:", ["Stok Barang Utama", "📋 Riwayat / Log Transaksi"])
     st.sidebar.write("---")
+    st.sidebar.info(f"🎭 Hak Akses: **{st.session_state['user_role']}**")
     if st.sidebar.button("🚪 Keluar / Logout", use_container_width=True):
         st.session_state.clear()
         st.session_state["logged_in"] = False
         st.rerun()
+
     if menu == "Stok Barang Utama":
         st.title("📦 Sistem Manajemen Stok Barang (Enterprise Cloud)")
         st.markdown("Aplikasi manajemen stok berskala industri retail, grosir, dan gudang pabrik.")
@@ -145,7 +149,12 @@ if sistem_login():
 
         with kolom_kiri:
             st.subheader("📝 Formulir Barang")
-            mode = st.radio("Pilih Tindakan:", ["Tambah Barang Baru", "Update Stok Masuk/Keluar", "Hapus Barang"])
+            
+            opsi_tindakan = ["Tambah Barang Baru", "Update Stok Masuk/Keluar"]
+            if st.session_state["user_role"] == "Owner":
+                opsi_tindakan.append("Hapus Barang")
+                
+            mode = st.radio("Pilih Tindakan:", opsi_tindakan)
 
             if mode == "Tambah Barang Baru":
                 nama = st.text_input("Nama Barang")
@@ -163,6 +172,7 @@ if sistem_login():
                             st.rerun()
                         except Exception as e:
                             st.error(f"Eror Sistem: {str(e)}")
+
             elif mode == "Update Stok Masuk/Keluar":
                 df_pilihan = ambil_data()
                 if df_pilihan.empty:
@@ -207,7 +217,6 @@ if sistem_login():
                             st.rerun()
                         except Exception as e:
                             st.error(f"Eror Hapus: {str(e)}")
-
         with kolom_kanan:
             st.subheader("📋 Daftar Stok Gudang Real-time")
             cari_input = st.text_input("🔍 Cari Nama Barang...", placeholder="Ketik untuk memfilter...")
@@ -225,13 +234,14 @@ if sistem_login():
                 st.table(df_tampil)
 
                 st.markdown("---")
+                
                 df_stok["total_nilai"] = df_stok["stok"] * df_stok["harga"]
                 total_aset = df_stok["total_nilai"].sum()
+
                 m1, m2, m3 = st.columns(3)
                 m1.metric(label="🛍️ Total Jenis Barang", value=f"{len(df_tampil)} Item")
                 m2.metric(label="📦 Total Seluruh Stok", value=f"{df_stok['stok'].sum()} Pcs")
                 m3.metric(label="💰 Total Nilai Aset Barang", value=f"Rp {total_aset:,.0f}".replace(",", "."))
-                
 
                 with m3:
                     st.write("📥 **Unduh Laporan**")
