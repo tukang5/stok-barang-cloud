@@ -41,7 +41,10 @@ def sistem_login():
                 input_lisensi = st.text_input("Masukkan Kunci Lisensi (License Key)")
                 buat_user = st.text_input("Buat Username Baru untuk Toko Anda")
                 buat_pass = st.text_input("Buat Password Baru", type="password")
+                buat_role = st.selectbox("Pilih Hak Akses Peran (Role):", ["Owner", "Karyawan"])
                 
+                supabase.table("pengguna").insert({"username": buat_user.strip(), "password": buat_pass.strip(), "role": buat_role}).execute()
+
                 if st.button("Aktifkan Aplikasi ✨", type="primary", use_container_width=True):
                     if not input_lisensi or not buat_user or not buat_pass:
                         st.error("Semua kolom pengisian wajib diisi!")
@@ -222,9 +225,13 @@ if sistem_login():
                 st.table(df_tampil)
 
                 st.markdown("---")
+                df_stok["total_nilai"] = df_stok["stok"] * df_stok["harga"]
+                total_aset = df_stok["total_nilai"].sum()
                 m1, m2, m3 = st.columns(3)
-                m1.metric(label="Total Jenis Barang", value=f"{len(df_tampil)} Item")
-                m2.metric(label="Total Seluruh Stok", value=f"{df_stok['stok'].sum()} Pcs")
+                m1.metric(label="🛍️ Total Jenis Barang", value=f"{len(df_tampil)} Item")
+                m2.metric(label="📦 Total Seluruh Stok", value=f"{df_stok['stok'].sum()} Pcs")
+                m3.metric(label="💰 Total Nilai Aset Barang", value=f"Rp {total_aset:,.0f}".replace(",", "."))
+                
 
                 with m3:
                     st.write("📥 **Unduh Laporan**")
