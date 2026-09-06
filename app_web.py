@@ -47,11 +47,24 @@ def sistem_login():
                         st.error("Semua kolom pengisian wajib diisi!")
                     else:
                         cek_lisensi = supabase.table("lisensi").select("*").ilike("kode_kunci", input_lisensi.strip()).execute()
+                        
                         lisensi_valid = False
                         if cek_lisensi.data and len(cek_lisensi.data) > 0:
-                            data_kunci = cek_lisensi.data[0] 
+                            data_kunci = cek_lisensi.data[0]
                             if str(data_kunci.get("status", "")).lower() == "tersedia":
                                 lisensi_valid = True
+                        
+                        if lisensi_valid:
+                            try:
+                                supabase.table("pengguna").insert({"username": buat_user.strip(), "password": buat_pass.strip()}).execute()
+                                supabase.table("lisensi").update({"status": "Terpakai"}).ilike("kode_kunci", input_lisensi.strip()).execute()
+                                st.success("Aktivasi Sukses! Silakan muat ulang halaman untuk masuk.")
+                                st.rerun()
+                            except Exception:
+                                st.error("Username tersebut sudah digunakan. Silakan pilih nama lain.")
+                        else:
+                            st.error("Kunci Lisensi Salah atau sudah kadaluwarsa/terpakai!")
+
 
 # 3. Jika lisensi ditemukan dan berstatus tersedia, loloskan sistem!
 if lisensi_valid:
