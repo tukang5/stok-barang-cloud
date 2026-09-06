@@ -127,11 +127,10 @@ if sistem_login():
     st.sidebar.title("📌 Menu Navigasi")
     menu = st.sidebar.radio("Pilih Halaman:", ["Stok Barang Utama", "📋 Riwayat / Log Transaksi"])
     st.sidebar.write("---")
- if st.sidebar.button("🚪 Keluar / Logout", use_container_width=True):
-    st.session_state.clear()
-    st.session_state["logged_in"] = False
-    st.rerun()
-
+    if st.sidebar.button("🚪 Keluar / Logout", use_container_width=True):
+        st.session_state.clear()
+        st.session_state["logged_in"] = False
+        st.rerun()
     if menu == "Stok Barang Utama":
         st.title("📦 Sistem Manajemen Stok Barang (Enterprise Cloud)")
         st.markdown("Aplikasi manajemen stok berskala industri retail, grosir, dan gudang pabrik.")
