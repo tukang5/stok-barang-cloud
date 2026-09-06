@@ -1,10 +1,10 @@
 import io
 import pandas as pd
 import streamlit as st
-from supabase import create_client, Client
 import openpyxl
 import openpyxl.styles
 import openpyxl.utils
+from supabase import create_client, Client
 
 # Set konfigurasi halaman web
 st.set_page_config(
@@ -56,9 +56,9 @@ def sistem_login():
                         
                         lisensi_valid = False
                         if cek_lisensi.data and len(cek_lisensi.data) > 0:
-                         data_kunci = cek_lisensi.data[0]
-                         if str(data_kunci.get("status", "")).lower() == "tersedia":
-                             lisensi_valid = True
+                            data_kunci = cek_lisensi.data
+                            if str(data_kunci.get("status", "")).lower() == "tersedia":
+                                lisensi_valid = True
                         
                         if lisensi_valid:
                             try:
@@ -82,10 +82,9 @@ def sistem_login():
                 if st.button("Masuk 🔓", type="primary", use_container_width=True):
                     fitur_cek = supabase.table("pengguna").select("*").eq("username", username.strip()).eq("password", password.strip()).execute()
                     if fitur_cek.data and len(fitur_cek.data) > 0:
-                        data_login = fitur_cek.data[0]
+                        data_login = fitur_cek.data
                         st.session_state["logged_in"] = True
                         st.session_state["user_role"] = data_login.get("role", "Owner")
-
                         st.success("Login Berhasil!")
                         st.rerun()
                     else:
@@ -127,59 +126,47 @@ def catat_log(nama_barang, tipe, jumlah, keterangan):
     except Exception:
         pass
 
-# === 4. FUNGSI PENDUKUNG (FORMAT EXCEL OTOMATIS & REAL-TIME) ===
+# === 4. FUNGSI PENDUKUNG (FORMAT EXCEL RESMI REAL-TIME) ===
 def konversi_ke_excel(df, sheet_name="Data"):
     output = io.BytesIO()
-    
-    # 1. Pastikan data yang ditarik selalu versi paling segar dari DataFrame Pandas
-    df_Format = df.copy()
+    df_format = df.copy()
     
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        df_Format.to_excel(writer, index=False, sheet_name=sheet_name, startrow=3)
-        
-        # Ambil kontrol workbook openpyxl untuk merapikan desain kolom
+        df_format.to_excel(writer, index=False, sheet_name=sheet_name, startrow=3)
         workbook = writer.book
         worksheet = writer.sheets[sheet_name]
         
-        # 2. Tambahkan Judul Laporan Formal di baris paling atas Excel
         worksheet["A1"] = f"LAPORAN RESMI PERSIDIAAN GUDANG ({sheet_name.upper()})"
         worksheet["A1"].font = openpyxl.styles.Font(name="Arial", size=14, bold=True, color="1A365D")
-        worksheet["A2"] = "SISTEM MANAJEMEN STOK ENTERPRISE CLOUD REALT-TIME"
+        worksheet["A2"] = "SISTEM MANAJEMEN STOK ENTERPRISE CLOUD REAL-TIME"
         worksheet["A2"].font = openpyxl.styles.Font(name="Arial", size=10, italic=True, color="4A5568")
         
-        # 3. Desain Header Tabel (Warna Biru Navy Pro + Teks Putih Tebal)
         header_font = openpyxl.styles.Font(name="Arial", size=11, bold=True, color="FFFFFF")
         header_fill = openpyxl.styles.PatternFill(start_color="2B6CB0", end_color="2B6CB0", fill_type="solid")
         alignment_center = openpyxl.styles.Alignment(horizontal="center", vertical="center")
         
-        # Warnai baris judul kolom (baris ke-4 di Excel karena startrow=3)
-        for col_num in range(1, len(df_Format.columns) + 1):
+        for col_num in range(1, len(df_format.columns) + 1):
             cell = worksheet.cell(row=4, column=col_num)
             cell.font = header_font
             cell.fill = header_fill
             cell.alignment = alignment_center
         
-        # 4. Auto-Fit: Membuat lebar kolom otomatis melebar pas sesuai panjang teks (Anti-Terpotong/###)
         for col in worksheet.columns:
             max_len = max(len(str(cell.value or '')) for cell in col)
-            col_letter = openpyxl.utils.get_column_letter(col[0].column)
+            col_letter = openpyxl.utils.get_column_letter(col.column)
             worksheet.column_dimensions[col_letter].width = max(max_len + 4, 12)
             
-        # 5. Berikan garis border tipis abu-abu agar tabel rapi saat dicetak di kertas
         thin_border = openpyxl.styles.Border(
             left=openpyxl.styles.Side(style='thin', color='CBD5E0'),
             right=openpyxl.styles.Side(style='thin', color='CBD5E0'),
             top=openpyxl.styles.Side(style='thin', color='CBD5E0'),
             bottom=openpyxl.styles.Side(style='thin', color='CBD5E0')
         )
-        for row in worksheet.iter_rows(min_row=4, max_row=worksheet.max_row, min_col=1, max_col=len(df_Format.columns)):
+        for row in worksheet.iter_rows(min_row=4, max_row=worksheet.max_row, min_col=1, max_col=len(df_format.columns)):
             for cell in row:
                 cell.border = thin_border
-                if cell.row > 4: # Mengatur isi data agar rata kiri teks, rata kanan angka
-                    cell.alignment = openpyxl.styles.Alignment(vertical="center")
-
+                cell.alignment = openpyxl.styles.Alignment(vertical="center")
     return output.getvalue()
-    
 # === 5. LOGIKA UTAMA TAMPILAN APLIKASI ===
 if sistem_login():
     st.sidebar.title("📌 Menu Navigasi")
@@ -233,7 +220,7 @@ if sistem_login():
                     st.warning("Belum ada data barang di database.")
                 else:
                     pilihan_barang = st.selectbox("Pilih Barang:", df_pilihan["nama"].tolist())
-                    data_barang = df_pilihan[df_pilihan["nama"] == pilihan_barang].iloc[0]
+                    data_barang = df_pilihan[df_pilihan["nama"] == pilihan_barang].iloc
 
                     st.info(f"Stok: **{data_barang['stok']} Pcs** | Modal: **Rp {float(data_barang['harga_beli']):,.0f}** | Jual: **Rp {float(data_barang['harga']):,.0f}**")
                     jenis_opsi = st.selectbox("Jenis Mutasi:", ["Stok Masuk (+)", "Stok Keluar (-)"])
@@ -255,7 +242,8 @@ if sistem_login():
                                 st.success("Stok berhasil diperbarui!")
                                 st.rerun()
                             except Exception as e:
-                                st.error(f"Eror Perubahan: {str(e)}")
+                                r_msg = str(e)
+                                st.error(f"Eror Perubahan: {r_msg}")
 
             elif mode == "Hapus Barang":
                 df_pilihan = ambil_data()
@@ -270,7 +258,8 @@ if sistem_login():
                             st.success("Barang berhasil dihapus!")
                             st.rerun()
                         except Exception as e:
-                            st.error(f"Eror Hapus: {str(e)}")
+                            r_msg = str(e)
+                            st.error(f"Eror Hapus: {r_msg}")
         with kolom_kanan:
             st.subheader("📋 Daftar Stok Gudang Real-time")
             cari_input = st.text_input("🔍 Cari Nama Barang...", placeholder="Ketik untuk memfilter...")
