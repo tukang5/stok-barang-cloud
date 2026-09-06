@@ -49,6 +49,7 @@ def sistem_login():
                         cek_lisensi = supabase.table("lisensi").select("*").ilike("kode_kunci", input_lisensi.strip()).execute()
                         
                         lisensi_valid = False
+                        # PERBAIKAN MUTAKHIR: Membaca indeks array [0] dari Supabase secara tepat
                         if cek_lisensi.data and len(cek_lisensi.data) > 0:
                             data_kunci = cek_lisensi.data[0]
                             if str(data_kunci.get("status", "")).lower() == "tersedia":
@@ -64,6 +65,7 @@ def sistem_login():
                                 st.error("Username tersebut sudah digunakan. Silakan pilih nama lain.")
                         else:
                             st.error("Kunci Lisensi Salah atau sudah kadaluwarsa/terpakai!")
+
             # JIKA SUDAH ADA AKUN (Kondisi Normal)
             else:
                 st.subheader("🔒 Silakan Login Terlebih Dahulu")
