@@ -237,14 +237,26 @@ if sistem_login():
                 
                 df_stok["total_nilai"] = df_stok["stok"] * df_stok["harga"]
                 total_aset = df_stok["total_nilai"].sum()
-
                 m1, m2, m3 = st.columns(3)
                 m1.metric(label="🛍️ Total Jenis Barang", value=f"{len(df_tampil)} Item")
                 m2.metric(label="📦 Total Seluruh Stok", value=f"{df_stok['stok'].sum()} Pcs")
                 m3.metric(label="💰 Total Nilai Aset Barang", value=f"Rp {total_aset:,.0f}".replace(",", "."))
 
+                # 🌟 FITUR BARU: GRAFIK VISUAL BATANG STOK BARANG REAL-TIME
+                st.markdown("---")
+                st.markdown("### 📊 Grafik Perbandingan Stok Barang")
+                
+                # Membuat dataframe ringkas khusus untuk grafik
+                df_grafik = df_stok[["nama", "stok"]].copy()
+                df_grafik.columns = ["Nama Barang", "Jumlah Stok"]
+                
+                # Menampilkan grafik batang interaktif yang otomatis menyesuaikan layar HP
+                st.bar_chart(data=df_grafik, x="Nama Barang", y="Jumlah Stok", color="#2B6CB0")
+
+                st.markdown("---")
                 with m3:
                     st.write("📥 **Unduh Laporan**")
+
                     data_excel = konversi_ke_excel(df_tampil, "Daftar Stok")
                     st.download_button(label="🟢 Ekspor ke Excel (.xlsx)", data=data_excel, file_name="laporan_stok_barang.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
             else:
