@@ -145,7 +145,7 @@ if sistem_login():
         st.markdown("Aplikasi manajemen stok berskala industri retail, grosir, dan gudang pabrik.")
         st.markdown("---")
 
-        kolom_kiri, kolom_kanan = st.columns(, gap="large")
+        kolom_kiri, kolom_kanan = st.columns(2, gap="large")
 
         with kolom_kiri:
             st.subheader("📝 Formulir Barang")
