@@ -81,7 +81,7 @@ def sistem_login():
                     if fitur_cek.data and len(fitur_cek.data) > 0:
                         data_login = fitur_cek.data
                         st.session_state["logged_in"] = True
-                        st.session_state["user_role"] = data_login.get("role", "Owner")
+                        st.session_state["user_role"] = data_login.get[0]("role", "Owner")
                         st.success("Login Berhasil!")
                         st.rerun()
                     else:
