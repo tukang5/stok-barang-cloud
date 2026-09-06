@@ -64,10 +64,8 @@ def sistem_login():
                                 st.error("Username tersebut sudah digunakan. Silakan pilih nama lain.")
                         else:
                             st.error("Kunci Lisensi Salah atau sudah kadaluwarsa/terpakai!")
-
-
-# 3. Jika lisensi ditemukan dan berstatus tersedia, loloskan sistem!
-if lisensi_valid:
+                            
+                        # 3. Jika lisensi ditemukan dan berstatus tersedia, loloskan sistem!
 
                         if lisensi_valid:
                             try:
