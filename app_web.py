@@ -151,10 +151,15 @@ def konversi_ke_excel(df, sheet_name="Data"):
             cell.fill = header_fill
             cell.alignment = alignment_center
         
-        for col in worksheet.columns:
-            max_len = max(len(str(cell.value or '')) for cell in col)
-            col_letter = openpyxl.utils.get_column_letter(col.column)
+        for col_idx in range(1, len(df_format.columns) + 1):
+            max_len = 0
+            col_letter = openpyxl.utils.get_column_letter(col_idx)
+            for row_idx in range(1, worksheet.max_row + 1):
+                val = str(worksheet.cell(row=row_idx, column=col_idx).value or '')
+                if len(val) > max_len:
+                    max_len = len(val)
             worksheet.column_dimensions[col_letter].width = max(max_len + 4, 12)
+
             
         thin_border = openpyxl.styles.Border(
             left=openpyxl.styles.Side(style='thin', color='CBD5E0'),
