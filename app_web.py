@@ -127,7 +127,7 @@ if sistem_login():
     st.sidebar.title("📌 Menu Navigasi")
     menu = st.sidebar.radio("Pilih Halaman:", ["Stok Barang Utama", "📋 Riwayat / Log Transaksi"])
     st.sidebar.write("---")
-    if st.sidebar.button("🚪 Keluar / Logout", use_container_width=True):
+ if st.sidebar.button("🚪 Keluar / Logout", use_container_width=True):
     st.session_state.clear()
     st.session_state["logged_in"] = False
     st.rerun()
