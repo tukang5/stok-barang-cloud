@@ -59,16 +59,15 @@ def sistem_login():
                             data_kunci = cek_lisensi.data
                             if str(data_kunci.get("status", "")).lower() == "tersedia":
                                 lisensi_valid = True
-                        
-                        if lisensi_valid:
-                            try:
-                                supabase.table("pengguna").insert({"username": buat_user.strip(), "password": buat_pass.strip(), "role": buat_role}).execute()
-                                supabase.table("lisensi").update({"status": "Terpakai"}).ilike("kode_kunci", input_lisensi.strip()).execute()
-                                
-                                st.session_state["logged_in"] = True
-                                st.session_state["user_role"] = buat_role
-                                st.success("Aktivasi Sukses! Selamat Datang di Dashboard Toko Anda.")
-                                st.rerun()
+                                if lisensi_valid:
+                                    try:
+                                        supabase.table("pengguna").insert({"username": buat_user.strip(), "password": buat_pass.strip(), "role": buat_role}).execute()
+                                        supabase.table("lisensi").update({"status": "Terpakai"}).ilike("kode_kunci", input_lisensi.strip()).execute()
+                                        st.session_state["logged_in"] = True
+                                        st.session_state["user_role"] = buat_role
+                                        st.success("Aktivasi Sukses! Selamat Datang di Dashboard Toko Anda.")
+                                        st.rerun()
+
                             except Exception as e:
                                 st.error(f"Gagal Registrasi: {str(e)}")
                         else:
