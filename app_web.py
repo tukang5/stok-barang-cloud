@@ -166,7 +166,7 @@ if sistem_login():
                     st.warning("Belum ada data barang di database.")
                 else:
                     pilihan_barang = st.selectbox("Pilih Barang:", df_pilihan["nama"].tolist())
-                    data_barang = df_pilihan[df_pilihan["nama"] == pilihan_barang].iloc
+                    data_barang = df_pilihan[df_pilihan["nama"] == pilihan_barang].iloc[0]
 
                     st.info(f"Stok saat ini: **{data_barang['stok']} Pcs** | Harga: **Rp {float(data_barang['harga']):,.0f}**")
                     jenis_opsi = st.selectbox("Jenis Mutasi:", ["Stok Masuk (+)", "Stok Keluar (-)"])
