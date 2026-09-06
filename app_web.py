@@ -81,7 +81,7 @@ def sistem_login():
                     if fitur_cek.data and len(fitur_cek.data) > 0:
                         data_login = fitur_cek.data
                         st.session_state["logged_in"] = True
-                        st.session_state["user_role"] = data_login[0].get("role", "Owner")
+                        st.session_state["user_role"] = data_login.get("role", "Owner")
                         st.success("Login Berhasil!")
                         st.rerun()
                     else:
@@ -220,7 +220,7 @@ if sistem_login():
                             st.rerun()
                         except Exception as e:
                             st.error(f"Eror Hapus: {str(e)}")
-                with kolom_kanan:
+        with kolom_kanan:
             st.subheader("📋 Daftar Stok Gudang Real-time")
             cari_input = st.text_input("🔍 Cari Nama Barang...", placeholder="Ketik untuk memfilter...")
             df_stok = ambil_data(cari_input)
@@ -247,7 +247,7 @@ if sistem_login():
                 txt_omzet = f"Rp {total_omzet:,.0f}".replace(",", ".")
                 txt_profit = f"Rp {total_profit_bersih:,.0f}".replace(",", ".")
 
-                # 🌟 KARTU DASHBOARD FINANSIAL RESPRONSIF (ANTI TERPOTONG DI HP)
+                # Kartu Dashboard Finansial Responsif HTML & CSS (Anti-Terpotong di HP)
                 html_kartu_keuangan = f"""
                 <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; font-family: sans-serif;">
                     <div style="flex: 1; min-width: 140px; background: linear-gradient(135deg, #2B6CB0, #4299E1); padding: 15px; border-radius: 12px; color: white;">
