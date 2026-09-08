@@ -91,7 +91,7 @@ def sistem_login():
                                     supabase.table("lisensi").update({"status": "Terpakai"}).ilike("kode_kunci", input_lisensi.strip()).execute()
                                     
                                     if reg_user.data and len(reg_user.data) > 0:
-                                        st.session_state["user_id"] = reg_user.data.get("id")
+                                        st.session_state["user_id"] = reg_user.data[0].get("id")
                                     
                                     st.session_state["logged_in"] = True
                                     st.session_state["user_role"] = buat_role
