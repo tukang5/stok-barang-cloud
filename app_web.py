@@ -82,7 +82,7 @@ def sistem_login():
                             
                             if cek_lisensi.data and len(cek_lisensi.data) > 0:
                                 data_kunci = cek_lisensi.data
-                                if str(data_kunci.get("status", "")).lower() == "tersedia":
+                                if str(data_kunci[0].get("status", "")).lower() == "tersedia":
                                     lisensi_valid = True
                             
                             if lisensi_valid:
