@@ -19,7 +19,7 @@ def inisialisasi_supabase() -> Client:
 
 supabase = inisialisasi_supabase()
 
-# === 2. SISTEM KEAMANAN LISENSI & LOGIN DINAMIS ===
+# === 2. SISTEM KEAMANAN INTEGRASI MULTI-USER & LISENSI MASSAL (KODE SUNTIKAN) ===
 def sistem_login():
     if "logged_in" not in st.session_state:
         st.session_state["logged_in"] = False
@@ -27,23 +27,41 @@ def sistem_login():
         st.session_state["user_role"] = "Owner"
     if "user_id" not in st.session_state:
         st.session_state["user_id"] = None
+    if "menu_akses" not in st.session_state:
+        st.session_state["menu_akses"] = "Login"
 
     if not st.session_state["logged_in"]:
-        # Cek apakah sudah ada akun pengguna terdaftar di database
-        try:
-            cek_user = supabase.table("pengguna").select("*").execute()
-            ada_user = len(cek_user.data) > 0
-        except Exception:
-            ada_user = False
-
         col1, col2, col3 = st.columns(3)
         with col2:
             st.write("")
             
-            # JIKA BELUM ADA AKUN (Aplikasi Baru Pertama Kali Dibuka Klien)
-            if not ada_user:
+            # MODE A: HALAMAN LOGIN NORMAL (BISA DIAKSES SEMUA USER BERSAMAAN)
+            if st.session_state["menu_akses"] == "Login":
+                st.subheader("🔒 Silakan Login Terlebih Dahulu")
+                username = st.text_input("Username Toko")
+                password = st.text_input("Password", type="password")
+
+                if st.button("Masuk 🔓", type="primary", use_container_width=True):
+                    fitur_cek = supabase.table("pengguna").select("*").eq("username", username.strip()).eq("password", password.strip()).execute()
+                    if fitur_cek.data and len(fitur_cek.data) > 0:
+                        data_login = fitur_cek.data
+                        st.session_state["user_id"] = data_login.get("id")
+                        st.session_state["logged_in"] = True
+                        st.session_state["user_role"] = data_login.get("role", "Owner")
+                        st.success("Login Berhasil!")
+                        st.rerun()
+                    else:
+                        st.error("Username atau Password salah!")
+                
+                st.write("---")
+                if st.button("Belum punya akun? Aktivasi Kunci Lisensi di Sini 🔑", use_container_width=True):
+                    st.session_state["menu_akses"] = "Aktivasi"
+                    st.rerun()
+            
+            # MODE B: HALAMAN REGISTRASI LISENSI BARU SECARA MANDIRI OLEH PEMBELI BARU
+            elif st.session_state["menu_akses"] == "Aktivasi":
                 st.subheader("🔑 Aktivasi Kunci Lisensi Aplikasi Baru")
-                st.info("Aplikasi belum diaktivasi. Silakan masukkan Kunci Lisensi resmi dari Developer.")
+                st.info("Masukkan Kunci Lisensi resmi dari Developer untuk mendaftarkan akun toko Anda.")
                 
                 input_lisensi = st.text_input("Masukkan Kunci Lisensi (License Key)")
                 buat_user = st.text_input("Buat Username Baru untuk Toko Anda")
@@ -54,48 +72,41 @@ def sistem_login():
                     if not input_lisensi or not buat_user or not buat_pass:
                         st.error("Semua kolom pengisian wajib diisi!")
                     else:
-                        cek_lisensi = supabase.table("lisensi").select("*").ilike("kode_kunci", input_lisensi.strip()).execute()
-                        
-                        lisensi_valid = False
-                        if cek_lisensi.data and len(cek_lisensi.data) > 0:
-                            data_kunci = cek_lisensi.data[0]
-                            if str(data_kunci.get("status", "")).lower() == "tersedia":
-                                lisensi_valid = True
-                        
-                        if lisensi_valid:
-                            try:
-                                # Daftarkan pengguna baru dan ambil data balikkannya untuk mengunci ID
-                                reg_user = supabase.table("pengguna").insert({"username": buat_user.strip(), "password": buat_pass.strip(), "role": buat_role}).execute()
-                                supabase.table("lisensi").update({"status": "Terpakai"}).ilike("kode_kunci", input_lisensi.strip()).execute()
-                                
-                                if reg_user.data and len(reg_user.data) > 0:
-                                    st.session_state["user_id"] = reg_user.data[0].get("id")
-                                
-                                st.session_state["logged_in"] = True
-                                st.session_state["user_role"] = buat_role
-                                st.success("Aktivasi Sukses! Selamat Datang di Dashboard Toko Anda.")
-                                st.rerun()
-                            except Exception as e:
-                                st.error(f"Gagal Registrasi: {str(e)}")
+                        # Cek apakah username sudah dipakai orang lain di database pusat
+                        cek_kembar = supabase.table("pengguna").select("*").eq("username", buat_user.strip()).execute()
+                        if cek_kembar.data and len(cek_kembar.data) > 0:
+                            st.error("Gagal! Username sudah digunakan toko lain, silakan buat nama unik lain.")
                         else:
-                            st.error("Kunci Lisensi Salah atau sudah kadaluwarsa/terpakai!")
-            # JIKA SUDAH ADA AKUN (Kondisi Normal)
-            else:
-                st.subheader("🔒 Silakan Login Terlebih Dahulu")
-                username = st.text_input("Username Toko")
-                password = st.text_input("Password", type="password")
-
-                if st.button("Masuk 🔓", type="primary", use_container_width=True):
-                    fitur_cek = supabase.table("pengguna").select("*").eq("username", username.strip()).eq("password", password.strip()).execute()
-                    if fitur_cek.data and len(fitur_cek.data) > 0:
-                        data_login = fitur_cek.data[0]
-                        st.session_state["user_id"] = data_login.get("id")
-                        st.session_state["logged_in"] = True
-                        st.session_state["user_role"] = data_login.get("role", "Owner")
-                        st.success("Login Berhasil!")
-                        st.rerun()
-                    else:
-                        st.error("Username atau Password salah!")
+                            cek_lisensi = supabase.table("lisensi").select("*").ilike("kode_kunci", input_lisensi.strip()).execute()
+                            lisensi_valid = False
+                            
+                            if cek_lisensi.data and len(cek_lisensi.data) > 0:
+                                data_kunci = cek_lisensi.data
+                                if str(data_kunci.get("status", "")).lower() == "tersedia":
+                                    lisensi_valid = True
+                            
+                            if lisensi_valid:
+                                try:
+                                    reg_user = supabase.table("pengguna").insert({"username": buat_user.strip(), "password": buat_pass.strip(), "role": buat_role}).execute()
+                                    supabase.table("lisensi").update({"status": "Terpakai"}).ilike("kode_kunci", input_lisensi.strip()).execute()
+                                    
+                                    if reg_user.data and len(reg_user.data) > 0:
+                                        st.session_state["user_id"] = reg_user.data.get("id")
+                                    
+                                    st.session_state["logged_in"] = True
+                                    st.session_state["user_role"] = buat_role
+                                    st.success("Aktivasi Sukses! Selamat Datang di Dashboard Toko Anda.")
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"Gagal Registrasi: {str(e)}")
+                            else:
+                                st.error("Kunci Lisensi Salah atau sudah kadaluwarsa/terpakai!")
+                
+                st.write("---")
+                if st.button("⬅️ Kembali ke Halaman Login", use_container_width=True):
+                    st.session_state["menu_akses"] = "Login"
+                    st.rerun()
+                    
         return False
     return True
 
